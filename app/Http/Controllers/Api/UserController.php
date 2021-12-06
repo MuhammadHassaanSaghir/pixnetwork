@@ -1,17 +1,21 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Jobs\EmailJob;
+use App\Jobs\ResetPasswordJob;
 use Illuminate\Http\Request;
 use App\Library\Services\Jwt_Token;
 use App\Models\Token;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Throwable;
 
@@ -23,7 +27,7 @@ class UserController extends Controller
         try {
             $request->validated();
             $emailToken = $token->emailToken(time());
-            $url = url('api/user/EmailConfirmation/' . $request->email . '/' . $emailToken);
+            $url = url('api/user/emailConfirmation/' . $request->email . '/' . $emailToken);
             EmailJob::dispatch($request->email, $url, $request->name)->delay(now()->addSeconds(10));
 
             $user = User::create([
@@ -35,13 +39,9 @@ class UserController extends Controller
                 'email_token' => $emailToken,
             ]);
             if (isset($user)) {
-                return response()->json([
-                    'message' => 'Verification Link has been Sent. Check Your Mail',
-                ]);
+                return response()->success('Verification Link has been Sent. Check Your Mail');
             } else {
-                return response()->json([
-                    'message' => 'Something Went Wrong While Sending Email',
-                ]);
+                return response()->error('Something Went Wrong While Sending Email');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -53,23 +53,15 @@ class UserController extends Controller
         try {
             $userExist = User::where('email', $email)->first();
             if (!isset($userExist)) {
-                return response()->json([
-                    'message' => 'Something went wrong',
-                ]);
+                return response()->error('Something went wrong');
             } elseif ($userExist->email_verified_at != null) {
-                return response()->json([
-                    'message' => 'Link has been Expired',
-                ]);
+                return response()->error('Link has been Expired');
             } elseif ($userExist->email_token != $hash) {
-                return response()->json([
-                    'message' => 'Unauthenticated',
-                ]);
+                return response()->error('Unauthenticated');
             } else {
                 $userExist->email_verified_at = time();
                 $userExist->save();
-                return response()->json([
-                    'message' => 'Now your pixNetwork Account has been Verified',
-                ]);
+                return response()->success('Now your pixNetwork Account has been Verified');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -83,15 +75,7 @@ class UserController extends Controller
             $user = User::where('email', $request->email)->first();
 
             if (($request->email != $user->email) or (!Hash::check($request->password, $user->password))) {
-                return response()->json([
-                    'message' => 'Incorrect Credentials',
-                    'status' => '401',
-                ]);
-            } elseif ($user->email_verified_at == null) {
-                return response()->json([
-                    'message' => 'Please Confirm Your Email',
-                ]);
-            } else {
+                return response()->error('Incorrect Credentials');
             }
 
             $token = $token->createToken($user->id);
@@ -101,21 +85,74 @@ class UserController extends Controller
                     'expired_at' => date("Y-m-d H:i:s", strtotime('+1 hours')),
                     'token' => $token,
                 ]);
-                return response()->json([
-                    'data' => new UserResource($user),
-                    'token' => $token,
-                ]);
+                $data = [
+                    'User' => new UserResource($user),
+                    'Token' => $token,
+                ];
+                return response()->success('Successfully Login', $data);
             } else {
                 Token::create([
                     'user_id' => $user->id,
                     'expired_at' => date("Y-m-d H:i:s", strtotime('+1 hours')),
                     'token' => $token,
                 ]);
+                $data = [
+                    'User' => new UserResource($user),
+                    'Token' => $token,
+                ];
+                return response()->success('Successfully Login', $data);
+            }
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
+        }
+    }
 
-                return response()->json([
-                    'data' => new UserResource($user),
-                    'token' => $token,
+    public function forgotPassword(Jwt_Token $token, Request $request)
+    {
+        try {
+            $request->validate([
+                'email' => 'required|email',
+            ]);
+            $resetToken = $token->emailToken(time());
+            $url = url('api/user/resetPassword/' . $request->email . '/' . $resetToken);
+
+            $user = User::where('email', $request->email)->first();
+            if (isset($user)) {
+                $tokenExist = DB::table('password_resets')->where('email', $request->email)->where('expire', '0')->first();
+                if (isset($tokenExist)) {
+                    $tokenExist->delete();
+                }
+                DB::table('password_resets')->insert([
+                    'email' => $request->email,
+                    'token' => $resetToken,
+                    'created_at' => date("Y-m-d H:i:s"),
                 ]);
+                ResetPasswordJob::dispatch($request->email, $url)->delay(now()->addSeconds(10));
+                return response()->success('Reset Link has been Sent. Check you Mail');
+            } else {
+                return response()->error('Something went wrong');
+            }
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
+        }
+    }
+
+    public function resetPassword($email, $hash, ResetPasswordRequest $request)
+    {
+        try {
+            $request->validated();
+            $tokenExist = DB::table('password_resets')->where('token', $hash)->where('expire', '0')->first();
+            if (!isset($tokenExist)) {
+                return response()->error('Unauthenticated');
+            } else {
+                $user = User::where('email', $email)->first();
+                $password_update = $user->update(['password' => Hash::make($request->new_password)]);
+                DB::table('password_resets')->where('token', $hash)->update(['expire' => '1']);
+                if (isset($password_update)) {
+                    return response()->success('Password Updated Successfully');
+                } else {
+                    return response()->error('Something Went Wrong');
+                }
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -141,9 +178,7 @@ class UserController extends Controller
                     $user->image = $request->file('image')->store('user_images');
                     $user->save();
                 }
-                return response()->json([
-                    'message' => 'Profile Updated',
-                ]);
+                return response()->success('Profile Updated', new UserResource($user));
             } else {
                 return response()->json([
                     'message' => 'No User Found',
@@ -154,7 +189,7 @@ class UserController extends Controller
         }
     }
 
-    public function update_password(UpdatePasswordRequest $request)
+    public function updatePassword(UpdatePasswordRequest $request)
     {
         try {
             $request->validated();
@@ -163,18 +198,12 @@ class UserController extends Controller
             if (($user and $check_pass) == true) {
                 $password_update = $user->update(['password' => Hash::make($request->new_password)]);
                 if (isset($password_update)) {
-                    return response()->json([
-                        'message' => 'Password Updated Successfully',
-                    ]);
+                    return response()->success('Password Updated Successfully');
                 } else {
-                    return response()->json([
-                        'message' => 'Something Went Wrong',
-                    ]);
+                    return response()->error('Something Went Wrong');
                 }
             } else {
-                return response()->json([
-                    'message' => 'Your Current Password is Wrong',
-                ]);
+                return response()->error('Your Current Password is Wrong');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -186,9 +215,7 @@ class UserController extends Controller
         try {
             $token_delete = Token::where('user_id', $request->user_id)->first();
             if ($token_delete->delete()) {
-                return response()->json([
-                    'message' => 'Logout Successfully',
-                ]);
+                return response()->success('Logout Successfully');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);

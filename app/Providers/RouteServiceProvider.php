@@ -51,6 +51,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware(['api'])
                 ->namespace($this->namespace)
                 ->group(base_path('routes/user.php'));
+
+            Route::prefix('api/image')
+                ->middleware(['api', 'jwtAuth'])
+                ->namespace($this->namespace)
+                ->group(base_path('routes/image.php'));
         });
     }
 
