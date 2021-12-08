@@ -14,10 +14,14 @@ class ImageResource extends JsonResource
      */
     public function toArray($request)
     {
-        if ($this->privacy == 0) {
+        // return parent::toArray($request);
+
+        if ($this->privacy == 1) {
             $privacy = 'Public';
-        } elseif ($this->privacy == 1) {
+        } elseif ($this->privacy == 2) {
             $privacy = 'Private';
+        } elseif ($this->privacy == 0) {
+            $privacy = 'Hidden';
         }
         return [
             'Name' => $this->image_name,

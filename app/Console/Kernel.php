@@ -20,7 +20,7 @@ class Kernel extends ConsoleKernel
         $schedule->call(function () {
             $token = Token::where("expired_at", "<", date("Y-m-d H:i:s"))->first();
             $token->delete();
-        })->hourly();
+        })->everyMinute();
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ResetPasswordRequest;
@@ -13,9 +14,9 @@ use App\Jobs\EmailJob;
 use App\Jobs\ResetPasswordJob;
 use Illuminate\Http\Request;
 use App\Library\Services\Jwt_Token;
+use App\Models\password_reset;
 use App\Models\Token;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Throwable;
 
@@ -29,7 +30,6 @@ class UserController extends Controller
             $emailToken = $token->emailToken(time());
             $url = url('api/user/emailConfirmation/' . $request->email . '/' . $emailToken);
             EmailJob::dispatch($request->email, $url, $request->name)->delay(now()->addSeconds(10));
-
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -73,11 +73,9 @@ class UserController extends Controller
         try {
             $request->validated();
             $user = User::where('email', $request->email)->first();
-
             if (($request->email != $user->email) or (!Hash::check($request->password, $user->password))) {
                 return response()->error('Incorrect Credentials');
             }
-
             $token = $token->createToken($user->id);
             $alreadyExist = Token::where('user_id', $user->id)->first();
             if (isset($alreadyExist)) {
@@ -107,25 +105,21 @@ class UserController extends Controller
         }
     }
 
-    public function forgotPassword(Jwt_Token $token, Request $request)
+    public function forgotPassword(Jwt_Token $token, ForgotPasswordRequest $request)
     {
         try {
-            $request->validate([
-                'email' => 'required|email',
-            ]);
+            $request->validated();
             $resetToken = $token->emailToken(time());
             $url = url('api/user/resetPassword/' . $request->email . '/' . $resetToken);
-
             $user = User::where('email', $request->email)->first();
             if (isset($user)) {
-                $tokenExist = DB::table('password_resets')->where('email', $request->email)->where('expire', '0')->first();
+                $tokenExist = password_reset::where('email', $request->email)->where('expire', '0')->first();
                 if (isset($tokenExist)) {
                     $tokenExist->delete();
                 }
-                DB::table('password_resets')->insert([
+                password_reset::create([
                     'email' => $request->email,
                     'token' => $resetToken,
-                    'created_at' => date("Y-m-d H:i:s"),
                 ]);
                 ResetPasswordJob::dispatch($request->email, $url)->delay(now()->addSeconds(10));
                 return response()->success('Reset Link has been Sent. Check you Mail');
@@ -141,13 +135,13 @@ class UserController extends Controller
     {
         try {
             $request->validated();
-            $tokenExist = DB::table('password_resets')->where('token', $hash)->where('expire', '0')->first();
+            $tokenExist = password_reset::where('token', $hash)->where('expire', '0')->first();
             if (!isset($tokenExist)) {
-                return response()->error('Unauthenticated');
+                return response()->error('Link has been Expired');
             } else {
                 $user = User::where('email', $email)->first();
                 $password_update = $user->update(['password' => Hash::make($request->new_password)]);
-                DB::table('password_resets')->where('token', $hash)->update(['expire' => '1']);
+                $tokenExist->where('token', $hash)->update(['expire' => '1']);
                 if (isset($password_update)) {
                     return response()->success('Password Updated Successfully');
                 } else {
@@ -175,7 +169,7 @@ class UserController extends Controller
                 }
                 if (isset($request->image)) {
                     unlink(storage_path('app/' . $user->image));
-                    $user->image = $request->file('image')->store('user_images');
+                    $user->image = $request->file('image')->store('public/user_images');
                     $user->save();
                 }
                 return response()->success('Profile Updated', new UserResource($user));

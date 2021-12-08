@@ -46,6 +46,7 @@ class Kernel extends HttpKernel
         ],
 
         'jwtAuth' => [\App\Http\Middleware\AuthMiddleware::class],
+        // 'accessImage' => [\App\Http\Middleware\ImageUser::class],
     ];
 
     /**
@@ -66,5 +67,6 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'verifyEmail' => \App\Http\Middleware\VerifyEmail::class,
+        'accessImage' => \App\Http\Middleware\ImageUser::class,
     ];
 }
