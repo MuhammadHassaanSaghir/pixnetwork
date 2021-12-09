@@ -62,7 +62,7 @@ class UserController extends Controller
             } else {
                 $userExist->email_verified_at = time();
                 $userExist->save();
-                return response()->success('Now your pixNetwork Account has been Verified', 200);
+                return response()->success('Now your pixNetwork Account has been Verified');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
