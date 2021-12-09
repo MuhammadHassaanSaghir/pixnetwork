@@ -11,7 +11,6 @@ use App\Http\Resources\ImageResource;
 use App\Http\Resources\ShareLinkResource;
 use App\Models\Images;
 use App\Models\Sharelink;
-use App\Models\Token;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,18 +22,21 @@ class ImagesController extends Controller
     {
         try {
             $request->validated();
-            $file = $request->file('image')->store('public/upload_images');
-            $extension = pathinfo($file, PATHINFO_EXTENSION);
+            $uploadImage = time() . "-" . $request->file('image')->getClientOriginalName();
+            $request->file('image')->move(public_path('upload_images/'), $uploadImage);
+            $extension = pathinfo($uploadImage, PATHINFO_EXTENSION);
+            $random = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 10);
             $uploadImage = Images::create([
                 'user_id' => $request->user_id,
                 'image_name' => $request->name,
-                'image_path' => $file,
+                'image_path' => $uploadImage,
                 'extension' => $extension,
+                'link' => $random,
             ]);
             if (isset($uploadImage)) {
                 return response()->success('Image Upload Successfully', new ImageResource($uploadImage), 200);
             } else {
-                return response()->error('Something Went Wrong', 400);
+                return response()->error('Something Went Wrong', 201);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -111,33 +113,52 @@ class ImagesController extends Controller
     public function shareLink(ShareLinkRequest $request, $id)
     {
         try {
-            $request->validated();
-            $visibility = null;
-            $email = null;
-            if ($request->visibility == 1 and $request->email != null) {
-                $visibility = 1;
-                $userExist = User::where('email', $request->email)->where('email_verified_at', '!=', null)->first();
-                if (empty($userExist)) {
-                    return response()->error('Email cannot registered or not verified', 401);
+            if ($request->sender_id != null) {
+                $break = explode(",", $request->sender_id);
+                foreach ($break as $value) {
+                    $sender_id = trim($value);
+                    $userExist = User::where('id', $sender_id)->where('email_verified_at', '!=', null)->first();
+                    if (empty($userExist)) {
+                        return response()->error($sender_id . ' user cannot registered or not verified', 401);
+                    }
+                    $linkExist = Sharelink::where('image_id', $id)->where('sender_id', $sender_id)->orWhere('image_id', $id)->where('sender_id', null)->first();
+                    if (!empty($linkExist)) {
+                        $linkExist->delete();
+                    }
+                    $image = Images::find($id);
+                    $link = url('api/image/view/' . $image->link);
+                    $linkImage = Sharelink::updateOrCreate([
+                        'sender_id' => $sender_id, 'image_id' => $id
+                    ], [
+                        'user_id' => $request->user_id,
+                        'image_id' => $id,
+                        'link' => $link,
+                        'sender_id' => $sender_id,
+                    ]);
+                }
+                if (isset($linkImage)) {
+                    return response()->success('Link Generate Successfully', new ShareLinkResource($break, $link), 200);
                 } else {
-                    $email = $userExist->email;
+                    return response()->error('Something Went Wrong', 201);
                 }
             } else {
-                return response()->error('You have required to place 1 => (Private)', 400);
-            }
-            $random = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 10);
-            $link = url('api/image/view/' . $random);
-            $shareLink = Sharelink::create([
-                'user_id' => $request->user_id,
-                'image_id' => $id,
-                'link' => $random,
-                'visibility' => $visibility,
-                'email' => $email,
-            ]);
-            if (isset($shareLink)) {
-                return response()->success('Link Generate Successfully', new ShareLinkResource($shareLink, $link), 200);
-            } else {
-                return response()->error('Something Went Wrong', 400);
+                $linkExist = Sharelink::where('image_id', $id)->where('user_id', $request->user_id);
+                if (!empty($linkExist)) {
+                    $linkExist->delete();
+                }
+                $image = Images::find($id);
+                $link = url('api/image/view/' . $image->link);
+                $linkImage = Sharelink::create([
+                    'user_id' => $request->user_id,
+                    'image_id' => $id,
+                    'link' => $link,
+                    'sender_id' => null,
+                ]);
+                if (isset($linkImage)) {
+                    return response()->success('Link Generate Successfully', new ShareLinkResource(null, $link), 200);
+                } else {
+                    return response()->error('Something Went Wrong', 201);
+                }
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -147,22 +168,22 @@ class ImagesController extends Controller
     public function view(Request $request, $id)
     {
         try {
-            $link = Sharelink::where('link', $id)->first();
-            if ($link->visibility === null) {
-                $image = Images::find($link->image_id);
-                if ($image->privacy != 2) {
-                    return view('image', ['image' => $image->image_path]);
-                } else {
-                    return response()->error('Image is Private', 401);
+            $link = Images::where('link', $id)->first();
+            if (!empty($link)) {
+                if ($link->privacy == 0) {
+                    return response()->error('Image is Hidden', 401);
+                } elseif ($link->privacy == 1) {
+                    return view('image', ['image' => $link->image_path]);
+                } elseif ($link->privacy == 2) {
+                    $viewer = Sharelink::where('sender_id', $request->user_id)->orWhere('user_id', $request->user_id)->first();
+                    if (!empty($viewer)) {
+                        return view('image', ['image' => $link->image_path]);
+                    } else {
+                        return response()->error('Image is Private', 401);
+                    }
                 }
             } else {
-                $loggedIn = Token::where('user_id', $request->user_id)->orwhere('user_id', $link->user_id)->first();
-                if (empty($loggedIn)) {
-                    return response()->error('You have required to Login as ' . $link->email, 401);
-                } else {
-                    $image = Images::find($link->image_id);
-                    return view('image', ['image' => $image->image_path]);
-                }
+                return response()->error('No Image Found', 400);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);

@@ -28,21 +28,23 @@ class UserController extends Controller
         try {
             $request->validated();
             $emailToken = $token->emailToken(time());
+            $profileImage = time() . "-" . $request->file('image')->getClientOriginalName();
+            $request->file('image')->move(public_path('user_images/'), $profileImage);
             $url = url('api/user/emailConfirmation/' . $request->email . '/' . $emailToken);
-            EmailJob::dispatch($request->email, $url, $request->name)->delay(now()->addSeconds(10));
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'age' => $request->age,
-                // 'image' => $request->file('image')->store('user_images'),
-                'image' => 0,
+                // 'image' => 0,
+                'image' => $profileImage,
                 'email_token' => $emailToken,
             ]);
             if (isset($user)) {
+                EmailJob::dispatch($request->email, $url, $request->name)->delay(now()->addSeconds(10));
                 return response()->success('Verification Link has been Sent. Check Your Mail');
             } else {
-                return response()->error('Something Went Wrong While Sending Email', 400);
+                return response()->error('Something Went Wrong While Sending Email', 201);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -54,7 +56,7 @@ class UserController extends Controller
         try {
             $userExist = User::where('email', $email)->first();
             if (!isset($userExist)) {
-                return response()->error('Something went wrong', 400);
+                return response()->error('Something went wrong', 201);
             } elseif ($userExist->email_verified_at != null) {
                 return response()->error('Link has been Expired', 401);
             } elseif ($userExist->email_token != $hash) {
@@ -125,7 +127,7 @@ class UserController extends Controller
                 ResetPasswordJob::dispatch($request->email, $url)->delay(now()->addSeconds(10));
                 return response()->success('Reset Link has been Sent. Check you Mail', 200);
             } else {
-                return response()->error('Something went wrong', 400);
+                return response()->error('Something went wrong', 201);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -146,7 +148,7 @@ class UserController extends Controller
                 if (isset($password_update)) {
                     return response()->success('Password Updated Successfully', 200);
                 } else {
-                    return response()->error('Something Went Wrong', 400);
+                    return response()->error('Something Went Wrong', 201);
                 }
             }
         } catch (Throwable $e) {
@@ -169,13 +171,15 @@ class UserController extends Controller
                     $user->save();
                 }
                 if (isset($request->image)) {
-                    unlink(storage_path('app/' . $user->image));
-                    $user->image = $request->file('image')->store('public/user_images');
+                    unlink(public_path('user_images/'));
+                    $profileImage = time() . "-" . $request->file('image')->getClientOriginalName();
+                    $request->file('image')->move(public_path('user_images/'), $profileImage);
+                    $user->image = $profileImage;
                     $user->save();
                 }
                 return response()->success('Profile Updated', new UserResource($user), 200);
             } else {
-                return response()->error('Something Went Wrong', 400);
+                return response()->error('Something Went Wrong', 201);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -193,7 +197,7 @@ class UserController extends Controller
                 if (isset($password_update)) {
                     return response()->success('Password Updated Successfully', 200);
                 } else {
-                    return response()->error('Something Went Wrong', 400);
+                    return response()->error('Something Went Wrong', 201);
                 }
             } else {
                 return response()->error('Your Current Password is Wrong', 401);

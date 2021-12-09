@@ -13,23 +13,24 @@ class ShareLinkResource extends JsonResource
      * @return array|\Illuminate\Contracts\Support\Arrayable|\JsonSerializable
      */
     private $link;
+    private $sender_id;
 
-    public function __construct($resource, $link)
+    public function __construct($sender_id, $link)
     {
-        // Ensure we call the parent constructor
-        parent::__construct($resource);
-        $this->resource = $resource;
-        $this->link = $link; // $apple param passed
+        $this->sender_id = $sender_id;
+        $this->link = $link;
     }
 
     public function toArray($request)
     {
+        if ($this->sender_id === null) {
+            $share = 'Its Public Link';
+        } else {
+            $share = implode(",", $this->sender_id);
+        }
         return [
-            'User' => $this->user_id,
-            'Image' => $this->image_id,
+            'Share to' => $share,
             'Link' => $this->link,
-            'Visibility' => $this->visibility,
-            'Email' => $this->email,
         ];
     }
 }

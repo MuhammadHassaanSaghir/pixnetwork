@@ -19,9 +19,9 @@ class CreateSharelinksTable extends Migration
             $table->foreign('user_id')->references('id')->on('users');
             $table->unsignedBigInteger('image_id');
             $table->foreign('image_id')->references('id')->on('images');
-            $table->string('link');
-            $table->boolean('visibility')->nullable();
-            $table->string('email')->nullable();
+            // $table->string('link');
+            // $table->boolean('visibility')->nullable();
+            $table->integer('sender_id')->nullable();
             $table->timestamps();
         });
     }

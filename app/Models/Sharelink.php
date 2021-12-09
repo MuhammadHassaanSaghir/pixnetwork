@@ -11,8 +11,6 @@ class Sharelink extends Model
     protected $fillable = [
         'user_id',
         'image_id',
-        'link',
-        'visibility',
-        'email',
+        'sender_id',
     ];
 }

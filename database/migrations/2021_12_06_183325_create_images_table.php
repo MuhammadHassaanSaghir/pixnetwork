@@ -20,7 +20,8 @@ class CreateImagesTable extends Migration
             $table->string('image_name');
             $table->string('image_path');
             $table->string('extension');
-            $table->boolean('privacy')->default(false);
+            $table->integer('privacy')->default(0);
+            $table->string('link');
             $table->timestamps();
         });
     }

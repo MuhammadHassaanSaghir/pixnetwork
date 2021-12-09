@@ -14,5 +14,6 @@ class Images extends Model
         'image_path',
         'extension',
         'privacy',
+        'link',
     ];
 }
