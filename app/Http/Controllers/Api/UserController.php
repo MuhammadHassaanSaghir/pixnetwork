@@ -35,11 +35,12 @@ class UserController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'age' => $request->age,
-                'image' => $request->file('image')->store('user_images'),
+                // 'image' => $request->file('image')->store('user_images'),
+                'image' => 0,
                 'email_token' => $emailToken,
             ]);
             if (isset($user)) {
-                return response()->success('Verification Link has been Sent. Check Your Mail', 200);
+                return response()->success('Verification Link has been Sent. Check Your Mail');
             } else {
                 return response()->error('Something Went Wrong While Sending Email', 400);
             }
