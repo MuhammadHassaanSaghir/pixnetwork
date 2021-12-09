@@ -39,9 +39,9 @@ class UserController extends Controller
                 'email_token' => $emailToken,
             ]);
             if (isset($user)) {
-                return response()->success('Verification Link has been Sent. Check Your Mail');
+                return response()->success('Verification Link has been Sent. Check Your Mail', 200);
             } else {
-                return response()->error('Something Went Wrong While Sending Email');
+                return response()->error('Something Went Wrong While Sending Email', 400);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -53,15 +53,15 @@ class UserController extends Controller
         try {
             $userExist = User::where('email', $email)->first();
             if (!isset($userExist)) {
-                return response()->error('Something went wrong');
+                return response()->error('Something went wrong', 400);
             } elseif ($userExist->email_verified_at != null) {
-                return response()->error('Link has been Expired');
+                return response()->error('Link has been Expired', 401);
             } elseif ($userExist->email_token != $hash) {
-                return response()->error('Unauthenticated');
+                return response()->error('Unauthenticated', 401);
             } else {
                 $userExist->email_verified_at = time();
                 $userExist->save();
-                return response()->success('Now your pixNetwork Account has been Verified');
+                return response()->success('Now your pixNetwork Account has been Verified', 200);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -74,7 +74,7 @@ class UserController extends Controller
             $request->validated();
             $user = User::where('email', $request->email)->first();
             if (($request->email != $user->email) or (!Hash::check($request->password, $user->password))) {
-                return response()->error('Incorrect Credentials');
+                return response()->error('Incorrect Credentials', 401);
             }
             $token = $token->createToken($user->id);
             $alreadyExist = Token::where('user_id', $user->id)->first();
@@ -87,7 +87,7 @@ class UserController extends Controller
                     'User' => new UserResource($user),
                     'Token' => $token,
                 ];
-                return response()->success('Successfully Login', $data);
+                return response()->success('Successfully Login', $data, 200);
             } else {
                 Token::create([
                     'user_id' => $user->id,
@@ -98,7 +98,7 @@ class UserController extends Controller
                     'User' => new UserResource($user),
                     'Token' => $token,
                 ];
-                return response()->success('Successfully Login', $data);
+                return response()->success('Successfully Login', $data, 200);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -122,9 +122,9 @@ class UserController extends Controller
                     'token' => $resetToken,
                 ]);
                 ResetPasswordJob::dispatch($request->email, $url)->delay(now()->addSeconds(10));
-                return response()->success('Reset Link has been Sent. Check you Mail');
+                return response()->success('Reset Link has been Sent. Check you Mail', 200);
             } else {
-                return response()->error('Something went wrong');
+                return response()->error('Something went wrong', 400);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -143,9 +143,9 @@ class UserController extends Controller
                 $password_update = $user->update(['password' => Hash::make($request->new_password)]);
                 $tokenExist->where('token', $hash)->update(['expire' => '1']);
                 if (isset($password_update)) {
-                    return response()->success('Password Updated Successfully');
+                    return response()->success('Password Updated Successfully', 200);
                 } else {
-                    return response()->error('Something Went Wrong');
+                    return response()->error('Something Went Wrong', 400);
                 }
             }
         } catch (Throwable $e) {
@@ -172,11 +172,9 @@ class UserController extends Controller
                     $user->image = $request->file('image')->store('public/user_images');
                     $user->save();
                 }
-                return response()->success('Profile Updated', new UserResource($user));
+                return response()->success('Profile Updated', new UserResource($user), 200);
             } else {
-                return response()->json([
-                    'message' => 'No User Found',
-                ]);
+                return response()->error('Something Went Wrong', 400);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -192,12 +190,12 @@ class UserController extends Controller
             if (($user and $check_pass) == true) {
                 $password_update = $user->update(['password' => Hash::make($request->new_password)]);
                 if (isset($password_update)) {
-                    return response()->success('Password Updated Successfully');
+                    return response()->success('Password Updated Successfully', 200);
                 } else {
-                    return response()->error('Something Went Wrong');
+                    return response()->error('Something Went Wrong', 400);
                 }
             } else {
-                return response()->error('Your Current Password is Wrong');
+                return response()->error('Your Current Password is Wrong', 401);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -209,7 +207,7 @@ class UserController extends Controller
         try {
             $token_delete = Token::where('user_id', $request->user_id)->first();
             if ($token_delete->delete()) {
-                return response()->success('Logout Successfully');
+                return response()->success('Logout Successfully', 200);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);

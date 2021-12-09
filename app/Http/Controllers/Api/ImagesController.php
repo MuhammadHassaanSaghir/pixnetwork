@@ -32,9 +32,9 @@ class ImagesController extends Controller
                 'extension' => $extension,
             ]);
             if (isset($uploadImage)) {
-                return response()->success('Image Upload Successfully', new ImageResource($uploadImage));
+                return response()->success('Image Upload Successfully', new ImageResource($uploadImage), 200);
             } else {
-                return response()->error('Something Went Wrong');
+                return response()->error('Something Went Wrong', 400);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -49,11 +49,9 @@ class ImagesController extends Controller
                     unlink(storage_path('app/' . $images->image_path));
                 }
                 $images->delete();
-                return response([
-                    'message' => 'Image has been Deleted',
-                ]);
+                return response()->success('You Unauthorize to Delete Image', 200);
             } else {
-                return response()->error('You Unauthorize to Delete Image');
+                return response()->error('You Unauthorize to Delete Image', 401);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -67,7 +65,7 @@ class ImagesController extends Controller
             if (json_decode($fetchImage)) {
                 return ImageResource::collection($fetchImage);
             } else {
-                return response()->error('No Image Found');
+                return response()->error('No Image Found', 204);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -83,12 +81,12 @@ class ImagesController extends Controller
                 if ($request->privacy == 0 or $request->privacy == 1 or $request->privacy == 2) {
                     $fetchImage->privacy = $request->privacy;
                     $fetchImage->save();
-                    return response()->success('Privacy Updated Successfully', new ImageResource($fetchImage));
+                    return response()->success('Privacy Updated Successfully', new ImageResource($fetchImage), 200);
                 } else {
-                    return response()->error('You have required to place 0 => (Hidden) / 1 => (Public) / 2 => (Private)');
+                    return response()->error('You have required to place 0 => (Hidden) / 1 => (Public) / 2 => (Private)', 400);
                 }
             } else {
-                return response()->error('No Image Found');
+                return response()->error('No Image Found', 204);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -101,9 +99,9 @@ class ImagesController extends Controller
             $request->validated();
             $images = Images::where(DB::raw('CONCAT_WS(" ", image_name, extension, privacy)'), 'like', '%' . $request->search . '%')->orwhereDate('created_at', $request->search)->orwhereTime('created_at', '=', $request->search)->where('user_id', $request->user_id)->get();
             if (json_decode($images)) {
-                return response()->success('Image Found Successfully', ImageResource::collection($images));
+                return response()->success('Image Found Successfully', ImageResource::collection($images), 400);
             } else {
-                return response()->error('No Image Found');
+                return response()->error('No Image Found', 204);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -120,12 +118,12 @@ class ImagesController extends Controller
                 $visibility = 1;
                 $userExist = User::where('email', $request->email)->where('email_verified_at', '!=', null)->first();
                 if (empty($userExist)) {
-                    return response()->error('Email cannot registered or not verified');
+                    return response()->error('Email cannot registered or not verified', 401);
                 } else {
                     $email = $userExist->email;
                 }
             } else {
-                return response()->error('You have required to place 1 => (Private)');
+                return response()->error('You have required to place 1 => (Private)', 400);
             }
             $random = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 10);
             $link = url('api/image/view/' . $random);
@@ -137,9 +135,9 @@ class ImagesController extends Controller
                 'email' => $email,
             ]);
             if (isset($shareLink)) {
-                return response()->success('Link Generate Successfully', new ShareLinkResource($shareLink, $link));
+                return response()->success('Link Generate Successfully', new ShareLinkResource($shareLink, $link), 200);
             } else {
-                return response()->error('Something Went Wrong');
+                return response()->error('Something Went Wrong', 400);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -155,12 +153,12 @@ class ImagesController extends Controller
                 if ($image->privacy != 2) {
                     return view('image', ['image' => $image->image_path]);
                 } else {
-                    return response()->error('Image is Private');
+                    return response()->error('Image is Private', 401);
                 }
             } else {
                 $loggedIn = Token::where('user_id', $request->user_id)->orwhere('user_id', $link->user_id)->first();
                 if (empty($loggedIn)) {
-                    return response()->error('You have required to Login as ' . $link->email);
+                    return response()->error('You have required to Login as ' . $link->email, 401);
                 } else {
                     $image = Images::find($link->image_id);
                     return view('image', ['image' => $image->image_path]);

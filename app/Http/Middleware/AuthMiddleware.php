@@ -27,16 +27,12 @@ class AuthMiddleware
     {
         $currToken = $request->bearerToken();
         if (empty($currToken)) {
-            return response([
-                'message' => 'Please Enter Token',
-            ]);
+            return response()->error('Please Enter Token', 400);
         } else {
             $request = $request->merge(array('user_id' => $this->authUser));
             $userExist = Token::where('user_id', $request->user_id)->first();
             if (!isset($userExist)) {
-                return response([
-                    'message' => 'Unauthenticated',
-                ]);
+                return response()->error('Unauthenticated', 401);
             } else {
                 return $next($request);
             }
