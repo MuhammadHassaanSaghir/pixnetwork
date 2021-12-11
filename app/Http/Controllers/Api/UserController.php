@@ -125,7 +125,7 @@ class UserController extends Controller
                     'token' => $resetToken,
                 ]);
                 ResetPasswordJob::dispatch($request->email, $url)->delay(now()->addSeconds(10));
-                return response()->success('Reset Link has been Sent. Check you Mail', 200);
+                return response()->success('Reset Link has been Sent. Check you Mail');
             } else {
                 return response()->error('Something went wrong', 201);
             }
@@ -146,7 +146,7 @@ class UserController extends Controller
                 $password_update = $user->update(['password' => Hash::make($request->new_password)]);
                 $tokenExist->where('token', $hash)->update(['expire' => '1']);
                 if (isset($password_update)) {
-                    return response()->success('Password Updated Successfully', 200);
+                    return response()->success('Password Updated Successfully');
                 } else {
                     return response()->error('Something Went Wrong', 201);
                 }
@@ -195,7 +195,7 @@ class UserController extends Controller
             if (($user and $check_pass) == true) {
                 $password_update = $user->update(['password' => Hash::make($request->new_password)]);
                 if (isset($password_update)) {
-                    return response()->success('Password Updated Successfully', 200);
+                    return response()->success('Password Updated Successfully');
                 } else {
                     return response()->error('Something Went Wrong', 201);
                 }
