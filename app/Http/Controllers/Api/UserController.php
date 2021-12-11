@@ -212,7 +212,7 @@ class UserController extends Controller
         try {
             $token_delete = Token::where('user_id', $request->user_id)->first();
             if ($token_delete->delete()) {
-                return response()->success('Logout Successfully', 200);
+                return response()->success('Logout Successfully');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
