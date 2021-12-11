@@ -25,7 +25,7 @@ class ImagesController extends Controller
             $uploadImage = time() . "-" . $request->file('image')->getClientOriginalName();
             $request->file('image')->move(public_path('upload_images/'), $uploadImage);
             $extension = pathinfo($uploadImage, PATHINFO_EXTENSION);
-            $random = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 10);
+            $random = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 10); // GENERATE RANDOM CODE TO ACCESS IMAGE
             $uploadImage = Images::create([
                 'user_id' => $request->user_id,
                 'image_name' => $request->name,
@@ -114,7 +114,7 @@ class ImagesController extends Controller
     {
         try {
             if ($request->sender_id != null) {
-                $break = explode(",", $request->sender_id);
+                $break = explode(",", $request->sender_id); //BREAK ARRAY TO GET USERS
                 foreach ($break as $value) {
                     $sender_id = trim($value);
                     $userExist = User::where('id', $sender_id)->where('email_verified_at', '!=', null)->first();
