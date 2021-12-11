@@ -51,7 +51,7 @@ class ImagesController extends Controller
                     unlink(storage_path('app/' . $images->image_path));
                 }
                 $images->delete();
-                return response()->success('You Unauthorize to Delete Image', 200);
+                return response()->success('Image Deleted Successfully', 200);
             } else {
                 return response()->error('You Unauthorize to Delete Image', 401);
             }
