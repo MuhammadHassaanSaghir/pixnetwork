@@ -28,17 +28,15 @@ class UserController extends Controller
         try {
             $request->validated();
             $emailToken = $token->emailToken(time());
-            // COMMENTS ONLY FOR LIVE API
-            // $profileImage = time() . "-" . $request->file('image')->getClientOriginalName();
-            // $request->file('image')->move(public_path('user_images/'), $profileImage);
+            $profileImage = time() . "-" . $request->file('image')->getClientOriginalName();
+            $request->file('image')->move(public_path('user_images/'), $profileImage);
             $url = url('api/user/emailConfirmation/' . $request->email . '/' . $emailToken);
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'age' => $request->age,
-                'image' => 0,
-                // 'image' => $profileImage,
+                'image' => $profileImage,
                 'email_token' => $emailToken,
             ]);
             if (isset($user)) {
@@ -82,7 +80,7 @@ class UserController extends Controller
             }
             $token = $token->createToken($user->id);
             $alreadyExist = Token::where('user_id', $user->id)->first();
-            if (isset($alreadyExist)) {     // IF TOKEN EXISTS THEN YOU CAN AGAIN LOGIN WITH ANOTHER TOKEN
+            if (isset($alreadyExist)) {     // IF TOKEN EXISTS THEN USER CAN AGAIN LOGIN WITH ANOTHER TOKEN
                 $alreadyExist->update([
                     'expired_at' => date("Y-m-d H:i:s", strtotime('+1 hours')),
                     'token' => $token,
