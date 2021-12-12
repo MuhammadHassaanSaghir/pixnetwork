@@ -48,7 +48,7 @@ class ImagesController extends Controller
             $images = Images::where('id', $id)->where('user_id', $request->user_id)->first();
             if (json_decode($images)) {
                 if ($images->image_path != null) {
-                    unlink(storage_path('app/' . $images->image_path));
+                    unlink(public_path('upload_images/' . $images->image_path));
                 }
                 $images->delete();
                 return response()->success('Image Deleted Successfully', 200);
