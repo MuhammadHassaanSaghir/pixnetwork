@@ -99,8 +99,7 @@ class ImagesController extends Controller
     {
         try {
             $request->validated();
-            // $images = Images::where(DB::raw('CONCAT_WS(" ", image_name, extension, privacy)'), 'like', '%' . $request->search . '%')->orwhereDate('created_at', $request->search)->orwhereTime('created_at', '=', $request->search)->where('user_id', $request->user_id)->get();
-            $images = Images::orWhere('image_name', 'like', '%' . $request->search . '%')->orWhere('extension', 'like', '%' . $request->search . '%')->orWhere('privacy', 'like', '%' . $request->search . '%')->where('user_id', $request->user_id)->get();
+            $images = Images::where(DB::raw('CONCAT_WS(" ", image_name, extension, privacy)'), 'like', '%' . $request->search . '%')->orwhereDate('created_at', $request->search)->orwhereTime('created_at', '=', $request->search)->where('user_id', $request->user_id)->get();
             if (json_decode($images)) {
                 return response()->success('Image Found Successfully', ImageResource::collection($images), 400);
             } else {
