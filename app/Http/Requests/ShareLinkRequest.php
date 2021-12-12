@@ -26,7 +26,7 @@ class ShareLinkRequest extends FormRequest
     public function rules()
     {
         return [
-            // 'sender_id' => 'integer',
+            'sender_id' => 'required',
         ];
     }
 

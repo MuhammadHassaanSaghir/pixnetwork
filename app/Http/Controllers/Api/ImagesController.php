@@ -110,7 +110,7 @@ class ImagesController extends Controller
         }
     }
 
-    public function shareLink(ShareLinkRequest $request, $id)
+    public function shareLink(Request $request, $id)
     {
         try {
             if ($request->sender_id != null) {
@@ -121,7 +121,7 @@ class ImagesController extends Controller
                     if (empty($userExist)) {
                         return response()->error($sender_id . ' user cannot registered or not verified', 401);
                     }
-                    $linkExist = Sharelink::where('image_id', $id)->where('sender_id', $sender_id)->orWhere('image_id', $id)->where('sender_id', null)->first();
+                    $linkExist = Sharelink::where('image_id', $id)->where('sender_id', null)->first();
                     if (!empty($linkExist)) {
                         $linkExist->delete();
                     }
@@ -159,6 +159,29 @@ class ImagesController extends Controller
                 } else {
                     return response()->error('Something Went Wrong', 201);
                 }
+            }
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
+        }
+    }
+
+    public function removeAccess(ShareLinkRequest $request, $id)
+    {
+        try {
+            $break = explode(",", $request->sender_id); //BREAK ARRAY TO GET USERS
+            foreach ($break as $value) {
+                $sender_id = trim($value);
+                $userExist = Sharelink::where('sender_id', $sender_id)->where('image_id', $id)->first();
+                if (empty($userExist)) {
+                    return response()->error($sender_id . ' user cannot exists', 401);
+                } else {
+                    $removeAccess = $userExist->delete();
+                }
+            }
+            if (isset($removeAccess)) {
+                return response()->success('User Access has been Removed Successfully');
+            } else {
+                return response()->error('Something Went Wrong', 201);
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);

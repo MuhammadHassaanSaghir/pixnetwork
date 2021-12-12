@@ -12,5 +12,6 @@ Route::get('/fetchImage', [ImagesController::class, 'fetch']);
 Route::post('/changePrivacy/{id}', [ImagesController::class, 'changePrivacy']);
 Route::post('/searchImage', [ImagesController::class, 'searchImage']);
 Route::post('/shareLink/{id}', [ImagesController::class, 'shareLink']);
+Route::post('/removeAccess/{id}', [ImagesController::class, 'removeAccess']);
 // });
 Route::get('view/{id}', [ImagesController::class, 'view']);
