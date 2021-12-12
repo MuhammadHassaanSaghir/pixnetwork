@@ -47,9 +47,9 @@ class ImagesController extends Controller
         try {
             $images = Images::where('id', $id)->where('user_id', $request->user_id)->first();
             if (json_decode($images)) {
-                unlink($images->image_path);
+                unlink(public_path('upload_images/' . $images->image_path));
                 $images->delete();
-                return response()->success('Image Deleted Successfully', 200);
+                return response()->success('Image Deleted Successfully');
             } else {
                 return response()->error('You Unauthorize to Delete Image', 401);
             }
