@@ -26,7 +26,7 @@ class SearchImageRequest extends FormRequest
     public function rules()
     {
         return [
-            'search' => 'required|string',
+            'search' => 'required',
         ];
     }
 

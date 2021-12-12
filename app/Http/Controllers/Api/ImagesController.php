@@ -88,7 +88,7 @@ class ImagesController extends Controller
                     return response()->error('You have required to place 0 => (Hidden) / 1 => (Public) / 2 => (Private)', 400);
                 }
             } else {
-                return response()->error('No Image Found', 204);
+                return response()->error('No Image Found');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
@@ -104,7 +104,7 @@ class ImagesController extends Controller
             if (json_decode($images)) {
                 return response()->success('Image Found Successfully', ImageResource::collection($images), 400);
             } else {
-                return response()->error('No Image Found', 204);
+                return response()->error('No Image Found');
             }
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage() . " Line No. " . $e->getLine()]);
